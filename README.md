@@ -3,7 +3,7 @@ Simple ruby script that parses the website http://www.dolarhoy.com and extracts 
 It also support gnome notifications
 
 ## Running the script
-- Running in silent mode (only write to stdout and csv file): 
-  `$ ruby main.rb`
+- Running in silent mode (only write to stdout and csv file):
+  `$ ruby ./src/main.rb`
 - Running in desktop mode (GNOME notifications enabled):
-  `$ ruby main.rb -n`
+  `$ ruby ./src/main.rb -n`

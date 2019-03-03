@@ -1,32 +1,17 @@
 require 'nokogiri'
 require 'open-uri'
-require 'libnotify'
+require_relative 'notifications'
 
-user_agents = File.readlines('user_agents.txt')
+user_agents = File.readlines("#{__dir__}/res/user_agents.txt")
 
 def precio_to_float(precio)
   precio[2..-1].gsub(",",".").to_f
 end
 
-#Linux Desktop Notification helpers
-@should_notify = ARGV[0] == "-n" ? true : false
+@previous_value_compra = nil
+@previous_value_venta = nil
 
-def notify_linux(title, body)
-  Libnotify.show(:body => body, :summary => title, :timeout => 5.0)
-end
-
-def notify_sube(precio, variacion)
-  notify_linux("Subió el dólar", "El dólar subío a $#{precio}. Una suba del #{variacion}% respecto de la última cotización")
-end
-
-def notify_baja(precio, variacion)
-  notify_linux("Bajó el dólar", "El dólar bajó a $#{precio}. Una baja del #{variacion}% respecto de la última cotización")
-end
-
-@precios_compra = []
-@precios_venta = []
-
-@history_file = "#{Time.now.getutc.to_i.to_s}.csv"
+@history_file = "#{__dir__}/../#{Time.now.getutc.to_i.to_s}.csv"
 open(@history_file, 'w') { |f|
   f.puts "timestamp,dolar_compra,dolar_venta,variacion,euro_compra,euro_venta"
 }
@@ -44,24 +29,24 @@ while true do
   precio_compra_euro = precio_to_float(section_euro.children[3].text)
   precio_venta_euro = precio_to_float(section_euro.children[5].text)
 
-  @precios_compra.push precio_compra
-  @precios_venta.push precio_venta
-
   variacion = 0.0
   message = "Compra: $ #{precio_compra} - Venta: $ #{precio_venta}"
-  if @precios_venta[-2] != nil
-    variacion = precio_venta * 100 / @precios_venta[-2] - 100
-    if precio_venta > @precios_venta[-2]
+  if @previous_value_venta != nil
+    variacion = (precio_venta * 100 / @previous_value_venta - 100).round(2)
+    if precio_venta > @previous_value_venta
       message = message + " ⇧ - Variación #{variacion}%"
-      if @should_notify then notify_sube(precio_venta, variacion) end
-    elsif precio_venta < @precios_venta[-2]
+      notify_sube(precio_venta, variacion)
+    elsif precio_venta < @previous_value_venta
       message = message + " ⇩ - Variación #{variacion}%"
-      if @should_notify then notify_baja(precio_venta, variacion) end
+      notify_baja(precio_venta, variacion)
     else
       message = message + " - Variación #{variacion}%"
     end
   end
   puts message
+
+  @previous_value_compra = precio_compra
+  @previous_value_venta = precio_venta
 
   timestamp = Time.now.getutc.to_i
   open(@history_file, 'a') { |f|
